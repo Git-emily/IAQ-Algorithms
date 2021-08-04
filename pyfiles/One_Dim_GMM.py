@@ -22,6 +22,7 @@ class MOG():
         self.data = []
         for i in range(self.data_array.shape[0]-1):
             self.data = np.concatenate((self.data_array[i], self.data_array[i+1]), axis=0)
+        self.data = self.data[np.logical_not(np.isnan(self.data))]
 
     def gaussian(self,x,mu,sigma):
         temp = -np.square(x-mu)/(2*sigma)
@@ -69,6 +70,9 @@ class MOG():
         #     samples.append(np.random.normal(self.mus[Z],self.sigmas[Z],1))
         plt.plot(self.data.tolist(),samples)
         plt.show()
+        # if not os.path.exists(PATH + r'\export_Emily'):
+        #     os.mkdir(PATH + r'\export_Emily')
+        # plt.savefig(os.path.join(PATH + r'\export_Emily',  "One_Dim_GMM.png"), format='png')  # dpi=600, bbox_inches='tight'
         # sn.distplot(samples)
         # plt.show()
 
