@@ -236,6 +236,8 @@ def Data_PreProcess(IndoorTempHumidity_file_path,folder_path,files_list):  # whi
     df_final = df_item.dropna()
     return df_final
 
+# def Redefined_Time(date_time):
+#     if
 
 def IAQIndexCalculation(df_final,starting_hour):
     # then calculating the IAQ score
@@ -249,6 +251,18 @@ def IAQIndexCalculation(df_final,starting_hour):
     df_final['overall_index'] = df_final.apply(lambda row: row['thermal_comfort'] * (1 / 3)
                                                            + row['ventilation'] * (1 / 3)
                                                            + row['air_quality'] * (1 / 3), axis=1)
+    df_final['Week_Day'] = df_final['date_time'].map(
+        lambda x: pd.Timestamp(x.year, x.month, x.day, 0, 0, 0).weekday())
+
+    # df_final['overall_index'] = df_final.apply(lambda row: row['ventilation'] * (1 / 2)
+    #                                                        + row['air_quality'] * (1 / 2), axis=1)
+
+    # df_final['overall_index'] = df_final.apply(lambda row: row['thermal_comfort'] * (1 / 2)
+    #                                                        + row['ventilation'] * (1 / 2), axis=1)
+
+    # df_final['overall_index'] = df_final.apply(lambda row: row['thermal_comfort'] * (1 / 2)
+    #                                                        + row['air_quality'] * (1 / 2), axis=1)
+
 
     # divide the df_final into daily curves
     min_time = min(df_final['date_time'])
@@ -267,7 +281,6 @@ def IAQIndexCalculation(df_final,starting_hour):
     ending_date = starting_date + pd.Timedelta(days=1)
 
     while ending_date < max_time + pd.Timedelta(days=1):
-        temp_df = pd.DataFrame()
         filtered_file = df_final[(starting_date <= df_final["date_time"]) &
                                  (df_final["date_time"] < ending_date)]
         if len(filtered_file) != 0:
@@ -275,7 +288,6 @@ def IAQIndexCalculation(df_final,starting_hour):
             # remove duplicate rows if there is
             filtered_file = filtered_file.drop_duplicates()
             file_list.append(filtered_file)
-
             if starting_date.weekday() in [0, 1, 2, 3, 4]:
                 date_list.append('weekday')
             else:
@@ -357,20 +369,23 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
         # change year,month,day to the same
         mindate = time_list[index][0].date()
         file_list[index]['redefined-timestamp'] = file_list[index]['date_time'].map(
-            lambda x: x.replace(year=2000, month=1, day=1)
-            if x.date() == mindate else x.replace(year=2000, month=1, day=2))
+            lambda x: x.replace(year=2000)
+            if x.date() == mindate else x.replace(year=2000))
         weekday_lines.append(file_list[index])
 
     for index in weekend_index:
         mindate = time_list[index][0].date()
         file_list[index]['redefined-timestamp'] = file_list[index]['date_time'].map(
-            lambda x: x.replace(year=2000, month=1, day=1)
-            if x.date() == mindate else x.replace(year=2000, month=1, day=2))
+            lambda x: x.replace(year=2000)
+            if x.date() == mindate else x.replace(year=2000))
         weekend_lines.append(file_list[index])
 
+    if not os.path.exists(PATH + r'\export_IAQCalcu'):
+        os.mkdir(PATH + r'\export_IAQCalcu')
 
     for col, color in zip(plots_names, color_palette):
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(19, 9))
+        # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(19, 9))
+        fig, (ax1, ax2,ax3) = plt.subplots(3, 1, figsize=(19, 9))
         for line in weekday_lines:
             ax1.plot(line["redefined-timestamp"], line[col], color)
             # ax1.yaxis.set_ticks([0,10,20,30,40,50,60,70,80,90,100])
@@ -379,24 +394,32 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
             ax2.plot(line["redefined-timestamp"], line[col], color)
             # ax2.yaxis.set_ticks([0,10,20,30,40,50,60,70,80,90,100])
 
+        #Add by emily
+        lines = weekday_lines + weekend_lines
+        for line in lines:
+            ax3.plot(line["redefined-timestamp"], line[col], color)
+
+
         hrlocator = mdates.HourLocator()  # date interval
         majorFmt = mdates.DateFormatter('%H:%M')  # set the formatter of X_axis
-
         ax1.xaxis.set_major_locator(hrlocator)
         ax1.xaxis.set_major_formatter(majorFmt)
-
         ax2.xaxis.set_major_locator(hrlocator)
         ax2.xaxis.set_major_formatter(majorFmt)
+
+        ax3.xaxis.set_major_locator(hrlocator)
+        ax3.xaxis.set_major_formatter(majorFmt)
         # rotate 90 degrees
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=90)
         plt.setp(ax2.xaxis.get_majorticklabels(), rotation=90)
         ax1.set_ylabel('weekday_{}'.format(col), fontsize=13)
         ax2.set_ylabel('weekend_{}'.format(col), fontsize=13)
 
+        plt.setp(ax3.xaxis.get_majorticklabels(), rotation=90)
+        ax3.set_ylabel('week_{}'.format(col), fontsize=13)
+
         # save prior to show
         file_name = unit_name + col + ".svg"
-        if not os.path.exists(PATH + r'\export_IAQCalcu'):
-            os.mkdir(PATH + r'\export_IAQCalcu')
         plt.savefig(os.path.join(PATH + r'\export_IAQCalcu', file_name), format='svg', dpi=1200, bbox_inches='tight')
 
         plt.show()
@@ -411,8 +434,6 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
         plt.xticks(range(0, 110, 10))
         plt.title(unit_name + '_' + col)
         file_name = unit_name + col + "_overall_hist.svg"
-        if not os.path.exists(PATH + r'\export_IAQCalcu'):
-            os.mkdir(PATH + r'\export_IAQCalcu')
         plt.savefig(os.path.join(PATH + r'\export_IAQCalcu', file_name), format='svg', dpi=1200, bbox_inches='tight')
         plt.show()
 
@@ -426,23 +447,21 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
         weekend_accumulation = weekend_accumulation.append(line)
 
     for col, color in zip(plots_names, color_palette):
-        fig, (ax1, ax2) = plt.subplots(2, 1)
+        fig, (ax11, ax22) = plt.subplots(2, 1)
 
-        ax1.hist(weekday_accumulation[col], bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], color=color)
-        ax2.hist(weekend_accumulation[col], bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], color=color)
+        ax11.hist(weekday_accumulation[col], bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], color=color)
+        ax22.hist(weekend_accumulation[col], bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], color=color)
 
-        ax1.set_xticks(range(0, 110, 10))
-        ax2.set_xticks(range(0, 110, 10))
+        ax11.set_xticks(range(0, 110, 10))
+        ax22.set_xticks(range(0, 110, 10))
 
-        ax1.set_ylabel('weekday', fontsize=13)
-        ax2.set_ylabel('weekend', fontsize=13)
+        ax11.set_ylabel('weekday', fontsize=13)
+        ax22.set_ylabel('weekend', fontsize=13)
 
-        ax2.set_xlabel(col, fontsize=13)
+        ax22.set_xlabel(col, fontsize=13)
 
         # save prior to show
         file_name = unit_name + col + "_hist.svg"
-        if not os.path.exists(PATH + r'\export_IAQCalcu'):
-            os.mkdir(PATH + r'\export_IAQCalcu')
         plt.savefig(os.path.join(PATH + r'\export_IAQCalcu', file_name), format='svg', dpi=1200, bbox_inches='tight')
 
         plt.show()
@@ -450,11 +469,11 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
 
 if __name__ == '__main__':
     EcobeeData_name = '\\indoor sensor\\EcobeeData\\Sotiri\\Hovardas Ecobee; 2021-01-09-to-2021-02-09.xlsx'
-    unit_name = '\\target unit(this is demo data)\\630094'
+    unit_name = '630094'
     files_list = {'CO2_files_list': 'WuhanIAQ_CO2','PM25_file_list' : 'WuhanIAQ_PM25','VOC_file_list' : 'WuhanIAQ_VOC'}
     time_interval = '5min-basis'
     curve_starting_hour = 11  # it is 24-hour format
 
-    df_final = Data_PreProcess(PATH  + EcobeeData_name,PATH + unit_name, files_list)
+    df_final = Data_PreProcess(PATH  + EcobeeData_name,PATH + '\\target unit(this is demo data)\\'+unit_name, files_list)
     df_final, file_list, date_list, time_list = IAQIndexCalculation(df_final,curve_starting_hour)
     Overall_visualization(df_final, file_list, date_list, time_list, unit_name, time_interval)
