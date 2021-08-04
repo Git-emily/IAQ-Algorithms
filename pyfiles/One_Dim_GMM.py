@@ -5,9 +5,6 @@ __author__ = "Emily"
 from numpy.linalg import det, inv
 from sklearn.datasets._samples_generator import make_blobs
 import matplotlib.pyplot as plt
-import seaborn as sn
-from sklearn.cluster import KMeans
-from sklearn.mixture import GaussianMixture
 import os
 import numpy as np
 
@@ -94,7 +91,8 @@ class MOG():
 
 if __name__ == '__main__':
     PATH = os.path.abspath(os.path.dirname(os.getcwd()))
-    file_name = '630091_dailyData_Dec292020_Feb062021.csv'
+    # file_name = '630091_dailyData_Dec292020_Feb062021.csv'
+    file_name = "61a3fa_dailyData_Dec292020_Feb062021.csv"
     print(PATH)
     file_path = PATH + r'\Raw_data' + '\\' + file_name
     subtractor = MOG(numOfGauss=3, meanVal=400.0,  bias = [1.3, 2, 2.5], varVal=200.0, file_path=file_path)

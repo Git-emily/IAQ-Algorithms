@@ -4,6 +4,8 @@ Spyder Editor
 
 This is a temporary script file.
 """
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
@@ -105,7 +107,12 @@ class MOG():
         #data_array = np.genfromtxt('630094_dailyData_Dec292020_Feb062021.csv', delimiter=',')
         #data_array = np.genfromtxt('62ff20_dailyData_Dec292020_Feb062021.csv', delimiter=',')
         #data_array = np.genfromtxt('6300c7_dailyData_Dec292020_Feb062021.csv', delimiter=',')
-        data_array = np.genfromtxt('61a3fa_dailyData_Dec292020_Feb062021.csv', delimiter=',')
+        PATH = os.path.abspath(os.path.dirname(os.getcwd()))
+        # file_name = '630091_dailyData_Dec292020_Feb062021.csv'
+        file_name = "61a3fa_dailyData_Dec292020_Feb062021.csv"
+        print(PATH)
+        file_path = PATH + r'\Raw_data' + '\\' + file_name
+        data_array = np.genfromtxt(file_path, delimiter=',')
         TotalNumFrames = np.size(data_array, 0)
         data_array = np.expand_dims(data_array, axis=1)
         for fr in range(TotalNumFrames):
@@ -133,7 +140,7 @@ class MOG():
         
         
 def main():
-    subtractor=MOG(numOfGauss=4,meanVal=600.0, varVal = 40000.0, BG_thresh=0.6, lr=0.1, height=1, width=17280) # note to change width accordingly
+    subtractor=MOG(numOfGauss=4,meanVal=600.0, varVal = 40000.0, BG_thresh=0.6, lr=0.1, height=1, width=16384) # note to change width accordingly
     subtractor.streamer()
     
     
