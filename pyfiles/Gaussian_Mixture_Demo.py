@@ -14,7 +14,7 @@ from scipy.stats import multivariate_normal
 
 
 class MOG():
-    def __init__(self, numOfGauss=3, BG_thresh=0.6, lr=0.01, height=240, width=320):
+    def __init__(self, numOfGauss=5, BG_thresh=0.6, lr=0.01, height=240, width=320):
         self.numOfGauss = numOfGauss
         self.BG_thresh = BG_thresh
         self.lr = lr
@@ -99,7 +99,7 @@ class MOG():
                 # labels=cv2.cvtColor(labels,cv2.COLOR_GRAY2BGR)
                 # stacked = np.concatenate((image, labels), axis=1)
                 cv2.imshow('FGBG', labels)
-                cv2.imwrite("res{}.png".format(frameCnt), labels);
+                # cv2.imwrite("res{}.png".format(frameCnt), labels);
             # cv2.imshow('frame',frame)
             # print(frame[0,0])
             if cv2.waitKey(1) & 0xFF == ord('q'):

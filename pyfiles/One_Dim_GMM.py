@@ -63,8 +63,8 @@ class MOG():
         # plt.figure(1)
         # plt.plot(self.data)
         samples = [subtractor.gaussian_mixture(x) for x in self.data]
-        SUM = sum(samples)
-        print(SUM)
+        SM = sum(samples)
+        print(SM)
         # for i in range(len(self.data)):
         #     Z = np.random.choice([-1,0,1])
         #     samples.append(np.random.normal(self.mus[Z],self.sigmas[Z],1))
@@ -96,9 +96,9 @@ class MOG():
 if __name__ == '__main__':
     PATH = os.path.abspath(os.path.dirname(os.getcwd()))
     # file_name = '630091_dailyData_Dec292020_Feb062021.csv'
-    file_name = "61a3fa_dailyData_Dec292020_Feb062021.csv"
+    file_name = "630094_dailyData_Dec292020_Feb062021.csv"
     print(PATH)
     file_path = PATH + r'\Raw_data' + '\\' + file_name
-    subtractor = MOG(numOfGauss=3, meanVal=400.0,  bias = [1.3, 2, 2.5], varVal=200.0, file_path=file_path)
+    subtractor = MOG(numOfGauss=4, meanVal=400.0,  bias = [1, 1.5, 2, 2.5], varVal=200.0, file_path=file_path)
     subtractor.EM()
     # subtractor.streamer()
