@@ -22,16 +22,15 @@ from bokeh.models import BasicTicker, ColorBar, LinearColorMapper
 from bokeh.models import DatetimeTickFormatter, Legend, Div, HoverTool, ColumnDataSource
 from bokeh.plotting import figure
 
-# from tkinter import messagebox
 
 # create root widget
 root = Tk()
-root.title("IAQ Data Analysis")
+root.title("Demo")
 root.iconbitmap(os.getcwd() + "/carrier-logo.ico")
 # root window size
-root.geometry("600x300")
+root.geometry("800x400")
 # window is not resizable in the X and Y direction
-root.resizable(False, False)
+# root.resizable(False, False)
 
 
 def LoadSelection():
