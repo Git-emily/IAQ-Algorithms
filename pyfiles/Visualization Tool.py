@@ -25,12 +25,12 @@ from bokeh.plotting import figure
 
 # create root widget
 root = Tk()
-root.title("Demo")
+root.title("IAQ Data Analysis")
 root.iconbitmap(os.getcwd() + "/carrier-logo.ico")
 # root window size
 root.geometry("800x400")
 # window is not resizable in the X and Y direction
-# root.resizable(False, False)
+root.resizable(False, False)
 
 
 def LoadSelection():
