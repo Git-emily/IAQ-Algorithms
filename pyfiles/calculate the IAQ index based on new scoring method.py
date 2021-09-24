@@ -1,13 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu May  6 10:31:35 2021
-
-@author: wuyi1234
-"""
-
 import datetime
 import os
-import warnings
 from math import pi
 
 import matplotlib.dates as mdates
@@ -22,7 +14,6 @@ from bokeh.plotting import figure
 from pythermalcomfort.models import pmv
 
 PATH = os.path.abspath(os.path.dirname(os.getcwd()))
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 def Fahrenheit2Celsius(Fahrenheit):
@@ -142,7 +133,8 @@ def date_time_generator(row):
     return datetime.datetime(year, month, day, hour, minute, second)
 
 
-def Data_PreProcess(IndoorTempHumidity_file_path,folder_path,files_list):  # which contains the CO2,PM2.5 and VOC files
+def Data_PreProcess(IndoorTempHumidity_file_path, folder_path,
+                    files_list):  # which contains the CO2,PM2.5 and VOC files
 
     # use indoor temperature and humidity as the main entity
     IndoorTempHumidity = pd.read_excel(IndoorTempHumidity_file_path,
@@ -169,7 +161,7 @@ def Data_PreProcess(IndoorTempHumidity_file_path,folder_path,files_list):  # whi
     item_info = pd.DataFrame()
     items = []
     for file_name in files_list:
-        All_files = file_searching(folder_path,files_list[file_name])
+        All_files = file_searching(folder_path, files_list[file_name])
         item = file_name.split('_')[0]
         items.append(item)
         for file_path in All_files:
@@ -178,7 +170,8 @@ def Data_PreProcess(IndoorTempHumidity_file_path,folder_path,files_list):  # whi
             # drop the last three digits in date (UTC)
             item_pd["date (UTC)"] = item_pd["date (UTC)"].map(lambda x: x[:-4])
             # convert your timestamps to datetime and then use matplotlib
-            item_pd["date-format"] = item_pd["date (UTC)"].map(lambda x: datetime.datetime.strptime(x, "%d.%m.%Y %H:%M:%S"))
+            item_pd["date-format"] = item_pd["date (UTC)"].map(
+                lambda x: datetime.datetime.strptime(x, "%d.%m.%Y %H:%M:%S"))
 
             # drop the empty value
             item_pd = item_pd[["date-format", "value"]]
@@ -187,21 +180,21 @@ def Data_PreProcess(IndoorTempHumidity_file_path,folder_path,files_list):  # whi
             item_pd = item_pd.dropna()
 
             item_pd = item_pd[(item_pd['date-format'] >= starting_date_time) &
-                            (item_pd['date-format'] <= ending_date_time)]
+                              (item_pd['date-format'] <= ending_date_time)]
 
             item_info = item_info.append(item_pd)
     # need to be sorted first by date-format
     item_info = item_info.sort_values('date-format')
 
     df_item = pd.merge_asof(IndoorTempHumidity, item_info['date-format'],
-                           left_on="date_time", right_on='date-format',
-                           allow_exact_matches=True, direction='backward')
+                            left_on="date_time", right_on='date-format',
+                            allow_exact_matches=True, direction='backward')
 
     df_item.rename(columns={"date-format": "date-format-backward"}, inplace=True)
 
     df_item = pd.merge_asof(df_item, item_info['date-format'],
-                           left_on="date_time", right_on='date-format',
-                           allow_exact_matches=True, direction='forward')
+                            left_on="date_time", right_on='date-format',
+                            allow_exact_matches=True, direction='forward')
 
     df_item.rename(columns={"date-format": "date-format-forward"}, inplace=True)
     # drop the NA rows
@@ -224,22 +217,24 @@ def Data_PreProcess(IndoorTempHumidity_file_path,folder_path,files_list):  # whi
 
         for avg_name in avg:
             if 270 <= diff_back_forward <= 330 and 0 <= diff_back_now <= 10:
-                subset= item_info[(forward_time <= item_info['date-format']) & (item_info['date-format'] <= backward_time)]
+                subset = item_info[
+                    (forward_time <= item_info['date-format']) & (item_info['date-format'] <= backward_time)]
                 avg_value = subset[avg_name].mean()
                 print(avg_value)
                 avg[avg_name].append(avg_value)
             else:
                 avg[avg_name].append(np.NAN)
     for avg_list in avg:
-        df_item[avg_list+'_avg'] = avg[avg_list]
+        df_item[avg_list + '_avg'] = avg[avg_list]
 
     df_final = df_item.dropna()
     return df_final
 
+
 # def Redefined_Time(date_time):
 #     if
 
-def IAQIndexCalculation(df_final,starting_hour):
+def IAQIndexCalculation(df_final, starting_hour):
     # then calculating the IAQ score
     # calculate the IAQ index
     df_final['thermal_comfort'] = df_final.apply(lambda row: ThermalComfort(row['Thermostat Temperature (F)'],
@@ -262,7 +257,6 @@ def IAQIndexCalculation(df_final,starting_hour):
 
     # df_final['overall_index'] = df_final.apply(lambda row: row['thermal_comfort'] * (1 / 2)
     #                                                        + row['air_quality'] * (1 / 2), axis=1)
-
 
     # divide the df_final into daily curves
     min_time = min(df_final['date_time'])
@@ -307,6 +301,7 @@ def IAQIndexCalculation(df_final,starting_hour):
     except Exception as e:
         print(e)
 
+
 def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, time_interval):
     """
     visualization
@@ -319,20 +314,20 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
     p1 = figure(title=unit_name + " " + time_interval, plot_width=800, plot_height=400, y_range=(-5, 100))
     p2 = figure(title=unit_name + " " + time_interval, plot_width=800, plot_height=400, y_range=(-5, 100))
     p3 = figure(title=unit_name + " " + time_interval, plot_width=800, plot_height=400, y_range=(-5, 100))
-    Ps = [p,p1,p2,p3]
+    Ps = [p, p1, p2, p3]
     plots_names = ['thermal_comfort', 'ventilation', 'air_quality', 'overall_index']
     color_palette = ['#E63721', '#21E6CF', '#60EB10', '#EB10BC']
-    for i,plo in enumerate(Ps):
+    for i, plo in enumerate(Ps):
         plo.yaxis.ticker = [-5, 0, 25, 50, 75, 100]
 
-        line = plo.line(x='date_time', y= plots_names[i],
-                                      source=CDS_results, line_width=2, color=color_palette[i])
+        line = plo.line(x='date_time', y=plots_names[i],
+                        source=CDS_results, line_width=2, color=color_palette[i])
         # add legend
         legend = Legend(items=[(plots_names[i], [line])], location="center")
         # add hover tips
         hover = HoverTool(tooltips=[("x", "@date_time{%Y-%m-%d %H:%M:%S}"),
-                                                    ("y", "@"+plots_names[i])],
-                                          formatters={'@date_time': 'datetime'})
+                                    ("y", "@" + plots_names[i])],
+                          formatters={'@date_time': 'datetime'})
         plo.add_tools(hover)
         plo.add_layout(legend, 'right')
 
@@ -385,7 +380,7 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
 
     for col, color in zip(plots_names, color_palette):
         # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(19, 9))
-        fig, (ax1, ax2,ax3) = plt.subplots(3, 1, figsize=(19, 9))
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(19, 9))
         for line in weekday_lines:
             ax1.plot(line["redefined-timestamp"], line[col], color)
             # ax1.yaxis.set_ticks([0,10,20,30,40,50,60,70,80,90,100])
@@ -394,11 +389,10 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
             ax2.plot(line["redefined-timestamp"], line[col], color)
             # ax2.yaxis.set_ticks([0,10,20,30,40,50,60,70,80,90,100])
 
-        #Add by emily
+        # Add by emily
         lines = weekday_lines + weekend_lines
         for line in lines:
             ax3.plot(line["redefined-timestamp"], line[col], color)
-
 
         hrlocator = mdates.HourLocator()  # date interval
         majorFmt = mdates.DateFormatter('%H:%M')  # set the formatter of X_axis
@@ -470,10 +464,11 @@ def Overall_visualization(df_final, file_list, date_list, time_list, unit_name, 
 if __name__ == '__main__':
     EcobeeData_name = '\\indoor sensor\\EcobeeData\\Sotiri\\Hovardas Ecobee; 2021-01-09-to-2021-02-09.xlsx'
     unit_name = '630094'
-    files_list = {'CO2_files_list': 'WuhanIAQ_CO2','PM25_file_list' : 'WuhanIAQ_PM25','VOC_file_list' : 'WuhanIAQ_VOC'}
+    files_list = {'CO2_files_list': 'WuhanIAQ_CO2', 'PM25_file_list': 'WuhanIAQ_PM25', 'VOC_file_list': 'WuhanIAQ_VOC'}
     time_interval = '5min-basis'
     curve_starting_hour = 11  # it is 24-hour format
 
-    df_final = Data_PreProcess(PATH  + EcobeeData_name,PATH + '\\target unit(this is demo data)\\'+unit_name, files_list)
-    df_final, file_list, date_list, time_list = IAQIndexCalculation(df_final,curve_starting_hour)
+    df_final = Data_PreProcess(PATH + EcobeeData_name, PATH + '\\target unit(this is demo data)\\' + unit_name,
+                               files_list)
+    df_final, file_list, date_list, time_list = IAQIndexCalculation(df_final, curve_starting_hour)
     Overall_visualization(df_final, file_list, date_list, time_list, unit_name, time_interval)

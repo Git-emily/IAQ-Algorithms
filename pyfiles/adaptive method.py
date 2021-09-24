@@ -13,7 +13,6 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
 
 # dir_path should contain all the data needed for plotting
 PATH = os.path.abspath(os.path.dirname(os.getcwd()))
@@ -24,7 +23,7 @@ starting_hour = 16  # which is 24-hour format
 execute_once = True
 
 
-def data_prepro(): #Every 24h
+def data_prepro():  # Every 24h
     # first step is to find the time interval which files cover through
     for file in os.listdir(dir_path):
         CurrFile = pd.read_csv(os.path.join(dir_path, file))
@@ -37,7 +36,7 @@ def data_prepro(): #Every 24h
         CurrFile = CurrFile.sort_values(by='date-format', ascending=True)
         # delete the NA rows
         CurrFile = CurrFile.dropna()
-        global execute_once   # modify a global variable, must use the keyword 'global'
+        global execute_once  # modify a global variable, must use the keyword 'global'
         if execute_once:
             min_time = min(CurrFile['date-format'])
             max_time = max(CurrFile['date-format'])
@@ -134,6 +133,7 @@ def data_visualization(file_list):
 
     # plot all the data, 单位为24小时
 
+
 # Action
 # 1. using 1-minute average data as a single-point data for a "bin"
 # For every day, the data vector is of length 60x24 = 1440
@@ -145,7 +145,8 @@ def data_visualization(file_list):
 # 4. Use "connected bins" to pick out significantly long abnormal events.
 
 # running bin by bin
-def M_AdaptiveAnomalyDetection(multiple_line, mulitipication_factor, ribbon_factor, interval_in_seconds=60,baseline_day=1):
+def M_AdaptiveAnomalyDetection(multiple_line, mulitipication_factor, ribbon_factor, interval_in_seconds=60,
+                               baseline_day=1):
     # first multiple lines contain line in chronological order
     # add each line a unique number to indicate the order of line
     # this would prevent the situation when there will be some missing data within one bin
@@ -287,6 +288,7 @@ def bin_connected(consecutive_bin_size, anomaly_points_dict):
             suppressed_anomaly_points_dict[line_key] = list(compress(anomaly_points_dict[line_key], neg_bool_filter))
     # processed_anomaly_points_collection
     return consecutive_indicator_dict, processed_anomaly_points_dict, suppressed_anomaly_points_dict
+
 
 # plot
 def plot_PIC():

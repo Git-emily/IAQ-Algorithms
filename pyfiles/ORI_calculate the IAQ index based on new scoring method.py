@@ -240,9 +240,10 @@ def Data_PreProcess(IndoorTempHumidity_file_path, folder_path,
     return df_final
 
 
-def Redefined_Time(date_time,Week_No,Week_Day):
-    redefined_time = date_time.replace(year=2000, month=Week_No, day = Week_Day)
+def Redefined_Time(date_time, Week_No, Week_Day):
+    redefined_time = date_time.replace(year=2000, month=Week_No, day=Week_Day)
     return redefined_time
+
 
 def IAQIndexCalculation(df_final, starting_hour):
     # then calculating the IAQ score
@@ -321,7 +322,8 @@ def IAQIndexCalculation(df_final, starting_hour):
     # df_final['redefined-timestamp'] = df_final['date_time'].map(lambda x: x.replace(year=2000,month = df_final['Week_No'],
     #                                                                                 day = df_final['Week_Day'] ))
 
-    df_final['redefined-timestamp'] = df_final.apply(lambda row: Redefined_Time(row['date_time'],row['Week_No'],row['Week_Day']), axis=1)
+    df_final['redefined-timestamp'] = df_final.apply(
+        lambda row: Redefined_Time(row['date_time'], row['Week_No'], row['Week_Day']), axis=1)
 
     print('start return')
 
@@ -378,8 +380,8 @@ def Overall_visualization(df_final):
     """
     weekday and weekend pattern
     """
-    weekday_data = df_final.loc[df_final['Week_Day'].isin([1,2,3,4,5])]
-    weekend_data = df_final.loc[df_final['Week_Day'].isin([5,6])]
+    weekday_data = df_final.loc[df_final['Week_Day'].isin([1, 2, 3, 4, 5])]
+    weekend_data = df_final.loc[df_final['Week_Day'].isin([5, 6])]
 
     weekday_lines = []
     weekend_lines = []

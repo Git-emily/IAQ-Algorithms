@@ -5,11 +5,9 @@ Created on Mon May 21 15:03:13 2018
 @author: justintian
 a """
 
-import sys
-import os
-import numpy as np
-import matplotlib.pyplot as plt
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 from scipy.stats import multivariate_normal
 
 

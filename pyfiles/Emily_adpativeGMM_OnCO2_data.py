@@ -5,37 +5,49 @@ Spyder Editor
 This is a temporary script file.
 """
 import os
+# import Plot_RawData
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import multivariate_normal
+import pandas as pd
 
 
 class MOG():
-    def __init__(self, numOfGauss, meanVal, varVal, BG_thresh, lr, width,ashrae_standare):
+    def __init__(self, numOfGauss, meanVal, varVal, BG_thresh, ncols, lr, ashrae_standare, variable, file_path,
+                 file_name, PATH):
         self.numOfGauss = numOfGauss
         self.BG_thresh = BG_thresh
         self.lr = lr
-        # self.height=height
-        self.width = width
         self.ashrae_standare = ashrae_standare
+        self.file_path = file_path
+        self.file_name = file_name
+        self.PATH = PATH
+        self.ncols = ncols
+        self.variable = variable
+        # self.data_df = pd.read_csv(self.file_path) #,usecols=range(2,self.ncols)
+        # self.data_df['date'] = self.data_df['date'].apply(lambda x: int(time.mktime(time.strptime(x,'%Y/%m/%d'))))
+        self.data_array = np.genfromtxt(self.file_path, delimiter=',', skip_header=1,
+                                        usecols=range(0, self.ncols))  # , skip_header=1, usecols=range(2, self.ncols)
+        # self.data_array = np.array(self.data_df)
+        self.rows = self.data_array.shape[0]
+        self.width = self.data_array.shape[1] - 1
+        self.anomaly_list = []
+        self.anomaly_count = []
         # self.mus=np.zeros((self.height,self.width, self.numOfGauss, 3)) ## assuming using color frames
         self.mus = np.zeros((self.width, self.numOfGauss))  ## assuming using gray-scale frames
-        # self.mus=np.zeros((self.height,self.width, self.numOfGauss, 1)) ## assuming using gray-scale frames
         self.sigmaSQs = np.zeros((self.width,
                                   self.numOfGauss))  ## all color channels share the same sigma and covariance matrices are diagnalized
         self.omegas = np.zeros((self.width, self.numOfGauss))
         self.currentBG = np.zeros(self.width)
         # for i in range(self.height):
         for j in range(self.width):
-            # self.mus[i,j]=np.array([[meanVal, meanVal, meanVal]]*self.numOfGauss) ##assuming a 400ppm for CO2 mean
             self.mus[j] = [meanVal] * self.numOfGauss
-            # self.mus[i,j]=np.array([[meanVal]]*self.numOfGauss) ##assuming a 400ppm for CO2 mean
             self.sigmaSQs[j] = [varVal] * self.numOfGauss
             self.omegas[j] = [1.0 / self.numOfGauss] * self.numOfGauss
 
     def reorder(self):
         BG_pivot = np.zeros((self.width), dtype=int)
-        # for i in range(self.height):
         for j in range(self.width):
             BG_pivot[j] = -1
             ratios = []
@@ -58,10 +70,9 @@ class MOG():
 
     def updateParam(self, curFrame, BG_pivot):
         labels = np.zeros((self.width))
-        # for i in range(self.height):
         for j in range(self.width):
-            X = curFrame[0, j]
-            match = -1                
+            X = curFrame[j, 0, 2]
+            match = -1
             for k in range(self.numOfGauss):
                 CoVarInv = np.linalg.inv(self.sigmaSQs[j, k] * np.eye(1))  # 计算矩阵的逆矩阵
                 X_mu = X - self.mus[j, k]
@@ -70,22 +81,20 @@ class MOG():
                 if dist < 6.25:
                     match = k
                     break
-            
+
             if match != -1:  ## a match found
                 ##update parameters
                 self.omegas[j] = (1.0 - self.lr) * self.omegas[j]
                 self.omegas[j, match] += self.lr
-                sum_w = sum(self.omegas[j]) 
-                rho = self.lr/sum_w
-                
-                #rho=self.lr * multivariate_normal.pdf(X,self.mus[j,match],np.linalg.inv(CoVarInv))
-                #rho = self.lr * 0.75;  # use 0.75 to reduce computation time
+                rho = self.lr * 0.75  # use 0.75 to reduce computation time
                 self.sigmaSQs[j, match] = (1.0 - rho) * self.sigmaSQs[j, match] + rho * np.dot(
                     (X - self.mus[j, match]).T, (X - self.mus[j, match]))
                 self.mus[j, match] = (1.0 - rho) * self.mus[j, match] + rho * X
                 ##label the pixel
-                if match > BG_pivot[j] or X >= self.ashrae_standare:
+                self.currentBG[j] = np.dot(self.omegas[j], self.mus[j, :])
+                if X >= self.currentBG[j] and (match > BG_pivot[j]):  # or X >= self.ashrae_standare
                     labels[j] = 250
+                    self.anomaly_list.append(list(curFrame[j]))
             else:
                 # none match the current value, the least prob. distribution
                 # is replaced with one with current value as its mean, an
@@ -94,61 +103,122 @@ class MOG():
                 self.sigmaSQs[j, -1] = 40000  # varVal or a high value
                 self.omegas[j, -1] = 0.02  # a low prior weight
                 labels[j] = 250
+                self.anomaly_list.append(list(curFrame[j]))
+
             # re-normalizng the weights --- by Ziyou
             sum_omegas = sum(self.omegas[j])
             if (sum_omegas != 1.0):
                 for k in range(self.numOfGauss):
                     self.omegas[j, k] = self.omegas[j, k] / sum_omegas
-
+        # update by emily
+        # for k, v in enumerate(labels):
+        #     if k > 0:
+        #         if labels[k] == 250:
+        #             m += 1
+        #             # if labels[k - 1] == labels[k]:
+        #             if m >= 4 and labels[k + 1] != 250:
+        #                 for i in range(m, 0, -1):
+        #                     self.anomaly_list.append(curFrame[k - i + 1])
+        #                 self.anomaly_count.append([curFrame[k,0,0],[curFrame[k-m+1,0,1],curFrame[k,0,1]]])
+        #                 m = 0
+        #             elif labels[k + 1] == 250:
+        #                 continue
+        #             elif m < 4 and labels[k + 1] != 250:
+        #                 m = 0
         return labels
 
-    def extractCurrentBG(self):
-        # for i in range(self.height):
-        for j in range(self.width):
-            # self.currentBG[i, j] = np.dot(self.omegas[i, j], self.mus[i, j, :, 0])
-            self.currentBG[j] = np.dot(self.omegas[j], self.mus[j, :])
-
     def streamer(self):
-        ## initialize pixel gaussians
-        # the *.csv files are generated from D:\xiongz\2020\A2L_Projects\FieldTrialOtherUnits\dataFigureOf26units\readDataFromFigure_plot_daily_CO2_data.m
-        # data_array = np.genfromtxt('630091_dailyData_Dec292020_Feb062021.csv', delimiter=',')
-        # data_array = np.genfromtxt('630094_dailyData_Dec292020_Feb062021.csv', delimiter=',')
-        # data_array = np.genfromtxt('62ff20_dailyData_Dec292020_Feb062021.csv', delimiter=',')
-        # data_array = np.genfromtxt('6300c7_dailyData_Dec292020_Feb062021.csv', delimiter=',')
-        PATH = os.path.abspath(os.path.dirname(os.getcwd()))
-        file_name = '630094_dailyData_Dec292020_Feb062021.csv'
-        # file_name = "61a3fa_dailyData_Dec292020_Feb062021.csv"
-        print(PATH)
-        file_path = PATH + r'\Raw_data' + '\\' + file_name
-        data_array = np.genfromtxt(file_path, delimiter=',')
-        TotalNumFrames = np.size(data_array, 0)
-        data_array = np.expand_dims(data_array, axis=1)
+        temp_data_array = np.zeros((self.rows, self.width, 1, 3))
+        TotalNumFrames = np.size(self.data_array, 0)
+        for i in range(TotalNumFrames):
+            for j in range(self.width):
+                x = self.data_array[i, 0]
+                y = j
+                z = self.data_array[i, j + 1]
+                temp_array = np.array([x, y, z])
+                temp_data_array[i, j] = temp_array
+        TotalNumFrames = np.size(self.data_array, 0)
         for fr in range(TotalNumFrames):
-            frame = data_array[fr, :, :]
-
+            frame = temp_data_array[fr, :, :, :]
             print("number of frames: ", fr)
-            print(frame[0, :])
-            print(type(frame[0, :]))
+            print(frame[:, 0, 2].T)
             BG_pivots = self.reorder()
             labels = self.updateParam(frame, BG_pivots)
             # print(labels)
             # print(np.sum(labels[0, :] > 0.0))
             plt.figure(1)
-            plt.plot(frame[0, :])
+            plt.plot(frame[:, 0, 2].T)
             plt.plot(labels[:], 'r')  # red color
-            plt.axis([0, 17500, 0, 1600])
+            plt.axis([0, self.width, 400, 1000])
 
             # extract plot current BG
-            self.extractCurrentBG()
             plt.figure(1)
             plt.plot(self.currentBG[:], 'g')
-            # plt.axis([0, 17500, 400, 1600])
+            plt.axhline(y=600, color='orange', linestyle='-')
+            plt.axis([0, self.width, 400, 1000])
             plt.show()
+        print('Done')
+
+    def anomaly_analysis(self):
+        print('Start to analysis')
+        anomaly_narray = np.array(self.anomaly_list)
+        anomaly_array = np.reshape(anomaly_narray, (-1, 3))
+
+        temp_anomaly_array = anomaly_array.T
+        X = list(temp_anomaly_array[0])
+        Y = list(temp_anomaly_array[1])
+        Z = list(temp_anomaly_array[2])
+        # ax = plt.subplot(111, projection='3d')
+        #
+        # ax.set_title('Plot_Anomaly_Data')  # 设置本图名称
+        # ax.scatter(X, Y, Z, c='r')  # 绘制数据点 c: 'r'红色，'y'黄色，等颜色
+        # plt.show()
+        # print('Plot Done')
+
+        analomy_DF = pd.DataFrame(anomaly_array, columns=['Timestamp', 'Time', 'Value'])
+        analomy_DF['Date'] = analomy_DF['Timestamp'].apply(lambda x: time.strftime('%Y-%m-%d', time.localtime(x)))
+        analomy_DF = analomy_DF[['Timestamp', 'Time', 'Value']]
+        anamaly_file = 'anomaly_data' + self.file_name
+        anamaly_path = os.path.join(self.PATH, 'Analysis_' + self.variable, anamaly_file)
+        np.savetxt(anamaly_path, analomy_DF, delimiter=',', fmt='%d')
+
+        analomy_DF_week = pd.DataFrame(anomaly_array, columns=['Week', 'Time', 'Value'])
+        analomy_DF_week = analomy_DF_week[['Week', 'Time', 'Value']]
+        df_anomaly = analomy_DF_week.set_index('Week', drop=False)
+        df_anomaly = df_anomaly.groupby(df_anomaly.index).agg({'Time': 'value_counts'})  # 'Week': 'first',
+        df_anomaly = df_anomaly.unstack()
+        anamaly_file = 'anomaly_Count' + self.file_name
+        anamaly_path = os.path.join(self.PATH, 'Analysis_' + self.variable, anamaly_file)
+        df_anomaly.to_csv(anamaly_path)
+
+        data_array = df_anomaly.values
+        # Plot_RawData.main(group=0, height=7, all_height=data_array.shape[0], all_width=data_array.shape[1], data_array=data_array,PATH=self.PATH)
+
+        # analomy_DF = analomy_DF[['Timestamp','Time']]
+        # analomy_DF = analomy_DF.set_index('Timestamp')
+        # analomy_count_DF = analomy_DF.groupby('Timestamp').unstack()
+
+        analomy = analomy_DF.pivot(index='Timestamp', columns='Time', values='Value')
+        print(analomy)
+        anamaly_file = 'anomaly_value' + self.file_name
+        anamaly_path = os.path.join(self.PATH, 'Analysis_' + self.variable, anamaly_file)
+        analomy.to_csv(anamaly_path)
+        print('DONE')
 
 
 def main():
-    subtractor = MOG(numOfGauss=4, meanVal=600.0, varVal=40000.0, BG_thresh=0.6, lr=0.026, width=16384, ashrae_standare = 1000)  # note to change width accordingly
+    ## initialize pixel gaussians
+    PATH = os.path.abspath(os.path.dirname(os.getcwd()))
+    file_name = '630094_Per15_Weekall_2021-02-28_2021-08-22 - week.csv'
+    print(PATH)
+    variable = 'CO2'
+    file_path = PATH + r'\Analysis_' + variable + '\\' + file_name
+    with open(file_path) as f:
+        ncols = len(f.readline().split(','))
+    subtractor = MOG(numOfGauss=4, meanVal=600, varVal=40000, BG_thresh=0.6, lr=0.1, ncols=ncols, ashrae_standare=0,
+                     variable=variable, file_path=file_path, file_name=file_name, PATH=PATH)
     subtractor.streamer()
+    subtractor.anomaly_analysis()
 
 
 if __name__ == '__main__':
